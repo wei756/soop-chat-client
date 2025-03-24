@@ -4,6 +4,16 @@
   "description": "SOOP Live Chat Client",
   "author": "wei756",
   "license": "MIT",
+  "keywords": [
+    "soop",
+    "afreecatv",
+    "stream",
+    "chat"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wei756/soop-chat-client.git"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

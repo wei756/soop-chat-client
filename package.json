@@ -1,0 +1,25 @@
+{
+  "name": "soop-chat-client",
+  "version": "1.0.0",
+  "description": "SOOP Live Chat Client",
+  "author": "wei756",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --minify"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "tiny-typed-emitter": "^2.1.0",
+    "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  }
+}

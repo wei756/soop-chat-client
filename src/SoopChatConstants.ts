@@ -45,3 +45,6 @@ export enum Userflag2 {
   SUBSCRIPTION_TIER2 = 19, // 2티어 구독
   SUBSCRIPTION_TIER3 = 20, // 3티어 구독
 }
+
+export const CMD_CONNECT =
+  '\x1b\x09\x30\x30\x30\x31\x30\x30\x30\x30\x30\x36\x30\x30\x0c\x0c\x0c\x31\x36\x0c';

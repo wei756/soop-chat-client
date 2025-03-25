@@ -3,10 +3,12 @@ import { TypedEmitter } from 'tiny-typed-emitter';
 import chalk from 'chalk';
 import { Logger } from 'Logger';
 import { getPlayerLiveInfo, StreamInfoOnline } from 'SoopApi';
-import { ServiceCommand, Userflag1, Userflag2 } from 'SoopChatConstants';
-
-const CMD_CONNECT =
-  '\x1b\x09\x30\x30\x30\x31\x30\x30\x30\x30\x30\x36\x30\x30\x0c\x0c\x0c\x31\x36\x0c';
+import {
+  CMD_CONNECT,
+  ServiceCommand,
+  Userflag1,
+  Userflag2,
+} from 'SoopChatConstants';
 
 interface SoopChatClientEvents {
   chat: (chat: SoopChatMessage) => void;

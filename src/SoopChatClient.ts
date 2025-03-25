@@ -394,6 +394,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       colorDarkmode,
       userflag1,
       userflag2,
+      stickerUrl: '',
     });
   };
 
@@ -408,19 +409,66 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       nickname,
       userflag,
       unknown2,
-      unknown3,
-      Unknown4,
+      language,
+      userType,
       stickerFiletype,
-      Unknown5,
+      subscription,
       color,
       colorDarkmode,
-      Unknown6,
+      unknown6,
     ] = bodyParted;
+
+    let userTypeName: string;
+    switch (parseInt(userType)) {
+      case 1:
+        userTypeName = 'staff';
+        break;
+      case 2:
+        userTypeName = 'police';
+        break;
+      case 3:
+      case 0:
+      default:
+        userTypeName = 'normal';
+    }
+
+    const subscriptionNum = parseInt(subscription);
+
+    const userflag1 = parseInt(userflag.split('|')[0]);
+    const userflag2 = parseInt(userflag.split('|')[1]);
+    const isStreamer = this.isUserflag(Userflag1.HOST, userflag1);
+    const isFan = this.isUserflag(Userflag1.FANCLUB, userflag1);
+    const isTopfan = this.isUserflag(Userflag1.TOPFAN, userflag1);
+    const isManager = this.isUserflag(Userflag1.MANAGER2, userflag1);
+    const isFemale = this.isUserflag(Userflag1.FEMALE, userflag1);
+
+    const stickerUrl = `${stickerSetId}/${stickerId}_40.${stickerFiletype}?ver=${stickerVer}`;
+
     this.log.verbose(
       `OGQ: ${chalk.hex('#' + colorDarkmode)(
         `${nickname}(${userId})`,
-      )}: ${content} ${stickerSetId}/${stickerId}_40.${stickerFiletype}?ver=${stickerVer}`,
+      )}: ${content} ${stickerUrl}`,
     );
+    this.emit('chat', {
+      content,
+      channelId: this.connectInfo!.channelId,
+      userId,
+      normalColor: '',
+      language,
+      userType: userTypeName,
+      nickname,
+      subscription: subscriptionNum,
+      isStreamer,
+      isFan,
+      isTopfan,
+      isManager,
+      isFemale,
+      color,
+      colorDarkmode,
+      userflag1,
+      userflag2,
+      stickerUrl,
+    });
   };
 
   onMsgOgqGift = (bodyParted: string[]) => {

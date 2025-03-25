@@ -22,6 +22,7 @@ export type SoopChatMessage = {
   colorDarkmode: string;
   userflag1: number;
   userflag2: number;
+  stickerUrl: string;
 };
 
 export enum SoopBalloonType {

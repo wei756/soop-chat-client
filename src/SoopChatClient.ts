@@ -5,6 +5,8 @@ import { Logger } from 'Logger';
 import { getPlayerLiveInfo, StreamInfoOnline } from 'SoopApi';
 import {
   CMD_CONNECT,
+  IceFlag,
+  IceFlagName,
   ServiceCommand,
   Userflag1,
   Userflag2,
@@ -210,6 +212,14 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
         break;
       case ServiceCommand.INOUT_MANAGER:
         this.onMsgInoutManager(bodyParted);
+        break;
+      case ServiceCommand.ICE1:
+        break;
+      case ServiceCommand.ICE2:
+        this.onMsgIce(bodyParted);
+        break;
+      case ServiceCommand.SLOWMODE:
+        this.onMsgSlowMode(bodyParted);
         break;
       case ServiceCommand.BALLOON:
         this.onMsgBalloon(bodyParted);
@@ -579,6 +589,40 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     );
   };
 
+  onMsgIce = (bodyParted: string[]) => {
+    const [
+      isEnabled, // '1': enable, '0': disable
+      isEnabled2, // '1': enable, '0': disable
+      _iceflag,
+      minFanBalloon,
+      minSubscriptionNum,
+    ] = bodyParted;
+
+    const iceflag = parseInt(_iceflag);
+
+    if (isEnabled === '1') {
+      const iceflags: string[] = [];
+      for (const flag in Object.values(IceFlag)) {
+        if (IceFlag[flag] == undefined) {
+          continue;
+        }
+        if (this.isIceflag(Number(flag), iceflag)) {
+          iceflags.push(IceFlagName[Number(flag) as keyof typeof IceFlagName]);
+        }
+      }
+      this.log.info(
+        `얼리기: 설정 스트리머, ${iceflags.join(', ')} 이상, 최소 별풍개수: ${minFanBalloon}, 최소 구독 개월수: ${minSubscriptionNum}`,
+      );
+    } else {
+      this.log.info(`얼리기: 해제`);
+    }
+  };
+
+  onMsgSlowMode = (bodyParted: string[]) => {
+    const [unknown1, duration] = bodyParted;
+    this.log.info(`저속모드: ${duration === '0' ? '해제' : duration + '초'}`);
+  };
+
   onMsgBalloon = (bodyParted: string[]) => {
     const [
       channelId,
@@ -751,6 +795,10 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
 
   isUserflag = (flagName: Userflag1 | Userflag2, userflag: number) => {
     return !!((userflag >>> flagName) & 1);
+  };
+
+  isIceflag = (flagName: IceFlag, iceflag: number) => {
+    return !!((iceflag >>> flagName) & 1);
   };
 
   close = () => {

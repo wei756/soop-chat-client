@@ -10,6 +10,9 @@ export enum ServiceCommand {
   SET_USERFLAG = 12, // 유저플래그 변경됨
   INOUT_MANAGER = 13, // 매니저 임명/해임
   SUBNICKNAME = 14, // 채팅방 닉네임 설정
+  ICE1 = 19, // 얼리기
+  ICE2 = 21, // 얼리기
+  SLOWMODE = 23, // 저속모드
   BALLOON = 18, // 별풍선
   BALLOON_AD = 87, // 애드벌룬
   BALLOON_AD_STATION = 107, // 방송국 별풍선
@@ -45,6 +48,22 @@ export enum Userflag2 {
   SUBSCRIPTION_TIER2 = 19, // 2티어 구독
   SUBSCRIPTION_TIER3 = 20, // 3티어 구독
 }
+
+export enum IceFlag {
+  FANCLUB = 5, // 팬클럽
+  SUPPORTER = 6, // 서포터
+  TOPFAN = 7, // 열혈팬
+  SUBSCRIPTION = 8, // 구독팬
+  MANAGER = 9, // 매니저
+}
+
+export const IceFlagName = {
+  [IceFlag.FANCLUB]: '팬클럽',
+  [IceFlag.SUPPORTER]: '서포터',
+  [IceFlag.TOPFAN]: '열혈팬',
+  [IceFlag.SUBSCRIPTION]: '구독팬',
+  [IceFlag.MANAGER]: '매니저',
+};
 
 export const CMD_CONNECT =
   '\x1b\x09\x30\x30\x30\x31\x30\x30\x30\x30\x30\x36\x30\x30\x0c\x0c\x0c\x31\x36\x0c';

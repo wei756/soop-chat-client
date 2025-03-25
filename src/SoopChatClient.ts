@@ -9,12 +9,18 @@ import {
   Userflag1,
   Userflag2,
 } from 'SoopChatConstants';
-import { ConnectedState, SoopChatMessage } from 'SoopChatTypes';
+import {
+  ConnectedState,
+  SoopBalloon,
+  SoopBalloonType,
+  SoopChatMessage,
+} from 'SoopChatTypes';
 
 interface SoopChatClientEvents {
-  chat: (chat: SoopChatMessage) => void;
   join: (channelId: string) => void;
   part: (channelId: string) => void;
+  chat: (chat: SoopChatMessage) => void;
+  balloon: (balloon: SoopBalloon) => void;
 }
 
 export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
@@ -489,7 +495,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       imageName,
       unknown4,
       unknown5,
-      TTS,
+      ttsType,
     ] = bodyParted;
 
     const joinedFan =
@@ -499,9 +505,19 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
 
     this.log.verbose(
       `별풍선: ${nickname}(${userId}) ${count}개${joinedFan}`,
-      TTS,
+      ttsType,
       imageName,
     );
+    this.emit('balloon', {
+      type: SoopBalloonType.NORMAL,
+      userId,
+      nickname,
+      count: parseInt(count),
+      fanClubOrder: parseInt(fanClubOrder),
+      isStation: false,
+      imageName,
+      ttsType,
+    });
   };
 
   onMsgBalloonAd = (bodyParted: string[]) => {
@@ -514,7 +530,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       message,
       unknown2, // ''
       icon,
-      image,
+      imageName,
       count,
       fanClubOrder,
       unknown3, // '0'
@@ -531,12 +547,32 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       }`,
       ttsType,
     );
+    this.emit('balloon', {
+      type: SoopBalloonType.AD,
+      userId,
+      nickname,
+      count: parseInt(count),
+      fanClubOrder: parseInt(fanClubOrder),
+      isStation: false,
+      imageName,
+      ttsType,
+    });
   };
 
   onMsgBalloonAdStation = (bodyParted: string[]) => {
     const [channelId, userId, nickname, count, image, message, unknown1] =
       bodyParted;
     this.log.verbose(`방송국 애드벌룬: ${nickname}(${userId}) ${count}개`);
+    this.emit('balloon', {
+      type: SoopBalloonType.AD,
+      userId,
+      nickname,
+      count: parseInt(count),
+      fanClubOrder: 0,
+      isStation: true,
+      imageName: image,
+      ttsType: '',
+    });
   };
 
   onMsgStreamClosed = (_: string[]) => {

@@ -23,3 +23,20 @@ export type SoopChatMessage = {
   userflag1: number;
   userflag2: number;
 };
+
+export enum SoopBalloonType {
+  NORMAL,
+  AD,
+  VOD,
+}
+
+export type SoopBalloon = {
+  type: SoopBalloonType;
+  userId: string;
+  nickname: string;
+  count: number;
+  fanClubOrder: number;
+  isStation: boolean;
+  imageName: string;
+  ttsType: string;
+};

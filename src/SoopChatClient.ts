@@ -35,6 +35,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     channelId: string;
     host: string;
     port: number;
+    password: string;
   } | null = null;
 
   connectedState: ConnectedState;
@@ -64,7 +65,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     this.connectedState = state;
   };
 
-  connect = async (userId: string) => {
+  connect = async (userId: string, password = '') => {
     this.setConnectedState(ConnectedState.STANDBY);
     try {
       const liveInfo = await getPlayerLiveInfo(userId);
@@ -76,6 +77,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
         channelId: this.streamInfo.CHANNEL.BJID,
         host: this.streamInfo.CHANNEL.CHDOMAIN,
         port: parseInt(this.streamInfo.CHANNEL.CHPT) + 1,
+        password,
       };
       this.log.name = `soop-chat:${this.connectInfo.channelId}`.padEnd(23);
 
@@ -157,9 +159,16 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       stream.svc_lang,
       '\x06&\x06subscribe\x06=\x060',
       '\x06&\x06lowlatency\x06=\x061',
-      '\x11pwd\x11',
-      '\x12auth_info\x11NULL\x12pver\x112\x12access_system\x11html5\x12\x0c',
+      '\x12',
+      `pwd\x11${this.connectInfo?.password ?? ''}\x12`,
+      'auth_info\x11NULL\x12',
+      'pver\x112\x12',
+      'access_system\x11html5\x12',
+      '\x0c',
     ];
+    if (this.streamInfo.CHANNEL.BPWD === 'Y') {
+      this.log.info(`비번방에 접속합니다.`);
+    }
     this.send(ServiceCommand.JOIN, body.join(''));
   };
 
@@ -179,9 +188,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
         this.joinChannel();
         break;
       case ServiceCommand.JOIN:
-        this.setConnectedState(ConnectedState.JOINED);
-        this.log.info(`채널 입장: ${this.connectInfo!.channelId}`);
-        this.emit('join', this.connectInfo!.channelId);
+        this.onMsgJoin(bodyParted);
         break;
       case ServiceCommand.JOINPART_USER:
         this.onMsgJoinPartUser(bodyParted);
@@ -239,6 +246,27 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
         );
         break;
     }
+  };
+
+  onMsgJoin = (bodyParted: string[]) => {
+    if (bodyParted[0] === '비밀번호가 틀렸습니다.') {
+      this.log.warn(`채널 입장 실패: 비밀번호가 틀렸습니다.`);
+      this.close();
+      return;
+    }
+    const [
+      chatNo,
+      channelId,
+      unknown1,
+      unknown2,
+      unknown3,
+      unknown4,
+      unknown5,
+      unknown6,
+    ] = bodyParted;
+    this.setConnectedState(ConnectedState.JOINED);
+    this.log.info(`채널 입장: ${channelId}`);
+    this.emit('join', channelId);
   };
 
   onMsgJoinPartUser = (bodyParted: string[]) => {

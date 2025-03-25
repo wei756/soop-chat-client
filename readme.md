@@ -32,6 +32,9 @@ client.on('chat', (chat) => {
 // join
 client.connect('channel id');
 
+// join a password-protected room
+client.connect('channel id', 'password');
+
 // part
 client.close();
 ```

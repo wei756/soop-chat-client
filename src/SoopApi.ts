@@ -49,7 +49,7 @@ export type StreamInfoOnline = {
     GRADE: string;
     BTYPE: string;
     CHATNO: string;
-    BPWD: 'N' | 'P'; // 비번방?
+    BPWD: 'N' | 'Y'; // 비번방
     TITLE: string; // 방송제목
     BPS: string; // 비트레이트
     RESOLUTION: string; // 해상도

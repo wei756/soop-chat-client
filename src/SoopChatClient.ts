@@ -220,6 +220,9 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       case ServiceCommand.BALLOON_AD_STATION:
         this.onMsgBalloonAdStation(bodyParted);
         break;
+      case ServiceCommand.BLOCK_WORDS_LIST:
+        this.onMsgBlockWordsList(bodyParted);
+        break;
       case ServiceCommand.STREAM_CLOSED:
         this.onMsgStreamClosed(bodyParted);
         break;
@@ -666,6 +669,17 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       imageName: image,
       ttsType: '',
     });
+  };
+
+  onMsgBlockWordsList = (bodyParted: string[]) => {
+    const [filterded, _targets] = bodyParted;
+    if (_targets === '') {
+      return;
+    }
+    const targets = _targets.split('\x06');
+    if (targets.length > 0) {
+      this.log.verbose(`금칙어 목록: ${targets.join(', ')} -> ${filterded}`);
+    }
   };
 
   onMsgStreamClosed = (_: string[]) => {

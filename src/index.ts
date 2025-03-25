@@ -1,3 +1,4 @@
-import { ConnectedState, SoopChatClient, SoopChatMessage } from 'SoopChatClient';
+import { SoopChatClient } from 'SoopChatClient';
+import { ConnectedState, SoopChatMessage } from 'SoopChatTypes';
 
 export { SoopChatClient, ConnectedState, SoopChatMessage };

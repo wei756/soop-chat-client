@@ -41,3 +41,16 @@ export type SoopBalloon = {
   imageName: string;
   ttsType: string;
 };
+
+export enum SoopBlockType {
+  TIMEOUT,
+  KICK,
+}
+
+export type SoopBlock = {
+  type: SoopBlockType;
+  duration: number;
+  userId: string;
+  nickname: string;
+  by: string;
+};

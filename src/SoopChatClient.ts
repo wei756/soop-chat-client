@@ -13,6 +13,8 @@ import {
   ConnectedState,
   SoopBalloon,
   SoopBalloonType,
+  SoopBlock,
+  SoopBlockType,
   SoopChatMessage,
 } from 'SoopChatTypes';
 
@@ -21,6 +23,7 @@ interface SoopChatClientEvents {
   part: (channelId: string) => void;
   chat: (chat: SoopChatMessage) => void;
   balloon: (balloon: SoopBalloon) => void;
+  block: (block: SoopBlock) => void;
 }
 
 export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
@@ -261,6 +264,13 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
         this.log.verbose(
           `강퇴: ${nickname}(${userId}),${joinType},${quitType},${unknown1},${userFlag}`,
         );
+        this.emit('block', {
+          type: SoopBlockType.KICK,
+          duration: 0,
+          userId,
+          nickname,
+          by: 'manager',
+        });
       }
     }
   };
@@ -280,6 +290,13 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     this.log.verbose(
       `채팅 금지: ${nickname}(${userId}) ${duration}s by ${byManagerId}`,
     );
+    this.emit('block', {
+      type: SoopBlockType.TIMEOUT,
+      duration: parseInt(duration),
+      userId,
+      nickname,
+      by: byManagerId,
+    });
   };
 
   onMsgChatMsg = (bodyParted: string[]) => {

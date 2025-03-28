@@ -16,6 +16,7 @@ export enum ServiceCommand {
   BALLOON = 18, // 별풍선
   BALLOON_AD = 87, // 애드벌룬
   BALLOON_AD_STATION = 107, // 방송국 별풍선
+  POLL = 50, // 투표
   BLOCK_WORDS_LIST = 54, // [ '', '', '' ]
   STREAM_CLOSED = 88, // 뱅종
   SUBSCRIPTION_NEW = 91, // 신규 구독

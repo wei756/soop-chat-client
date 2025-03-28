@@ -230,6 +230,9 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       case ServiceCommand.BALLOON_AD_STATION:
         this.onMsgBalloonAdStation(bodyParted);
         break;
+      case ServiceCommand.POLL:
+        this.onMsgPoll(bodyParted);
+        break;
       case ServiceCommand.BLOCK_WORDS_LIST:
         this.onMsgBlockWordsList(bodyParted);
         break;
@@ -611,7 +614,9 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
         }
       }
       this.log.info(
-        `얼리기: 설정 스트리머, ${iceflags.join(', ')} 이상, 최소 별풍개수: ${minFanBalloon}, 최소 구독 개월수: ${minSubscriptionNum}`,
+        `얼리기: 설정 스트리머, ${iceflags.join(
+          ', ',
+        )} 이상, 최소 별풍개수: ${minFanBalloon}, 최소 구독 개월수: ${minSubscriptionNum}`,
       );
     } else {
       this.log.info(`얼리기: 해제`);
@@ -713,6 +718,15 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       imageName: image,
       ttsType: '',
     });
+  };
+
+  onMsgPoll = (bodyParted: string[]) => {
+    const [status, channelId, pollId, unknown1] = bodyParted;
+    if (status === '1') {
+      this.log.info(`투표 시작: ${pollId}`);
+    } else if (status === '4') {
+      this.log.info(`투표 종료: ${pollId}`);
+    }
   };
 
   onMsgBlockWordsList = (bodyParted: string[]) => {

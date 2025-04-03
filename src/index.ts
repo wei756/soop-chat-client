@@ -1,4 +1,19 @@
 import { SoopChatClient } from 'SoopChatClient';
-import { ConnectedState, SoopChatMessage } from 'SoopChatTypes';
+import {
+  ConnectedState,
+  SoopChatMessage,
+  SoopBalloon,
+  SoopBalloonType,
+  SoopBlock,
+  SoopBlockType,
+} from 'SoopChatTypes';
 
-export { SoopChatClient, ConnectedState, SoopChatMessage };
+export {
+  SoopChatClient,
+  ConnectedState,
+  SoopChatMessage,
+  SoopBalloon,
+  SoopBalloonType,
+  SoopBlock,
+  SoopBlockType,
+};

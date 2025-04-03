@@ -2,7 +2,8 @@ import WebSocket from 'ws';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import chalk from 'chalk';
 import { Logger } from 'Logger';
-import { getPlayerLiveInfo, StreamInfoOnline } from 'SoopApi';
+import { getPlayerLiveInfo } from 'SoopApi';
+import { StreamInfoOnline } from 'SoopApiTypes';
 import {
   CMD_CONNECT,
   IceFlag,

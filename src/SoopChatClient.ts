@@ -14,6 +14,7 @@ import {
 } from 'SoopChatConstants';
 import {
   ConnectedState,
+  ConnectionInfo,
   SoopBalloon,
   SoopBalloonType,
   SoopBlock,
@@ -30,81 +31,93 @@ interface SoopChatClientEvents {
 }
 
 export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
-  socket: WebSocket | null = null;
-  log: Logger;
+  protected socket: WebSocket | null = null;
+  protected log: Logger;
 
-  streamInfo: StreamInfoOnline | null = null;
-  connectInfo: {
-    channelId: string;
-    host: string;
-    port: number;
-    password: string;
-  } | null = null;
+  protected _connection: ConnectionInfo | null = null;
+  protected set connection(connection: ConnectionInfo | null) {
+    this._connection = connection;
+  }
+  public get connection() {
+    return this._connection;
+  }
+  protected _stream: StreamInfoOnline | null = null;
+  protected set stream(stream: StreamInfoOnline | null) {
+    this._stream = stream;
+  }
+  public get stream() {
+    return this._stream;
+  }
 
-  connectedState: ConnectedState;
+  private _connectedState: ConnectedState = ConnectedState.STANDBY;
+  protected set connectedState(state: ConnectedState) {
+    this._connectedState = state;
+    if (state === ConnectedState.STANDBY) {
+      clearInterval(this.loopPingPong);
+    } else if (state === ConnectedState.CONNECTED) {
+      clearInterval(this.loopPingPong);
+      this.loopPingPong = setInterval(this.sendPing, 60000);
+    }
+  }
+  public get connectedState() {
+    return this._connectedState;
+  }
 
-  loopPingPong: NodeJS.Timeout;
+  protected loopPingPong: NodeJS.Timeout;
 
-  decoder = new TextDecoder();
+  protected decoder = new TextDecoder();
 
   constructor({ logging = false }) {
     super();
-    this.connectedState = ConnectedState.STANDBY;
     this.loopPingPong = setInterval(this.sendPing, 60000);
     this.log = new Logger('soop-chat', logging);
   }
 
-  sendPing = () => {
+  protected sendPing = () => {
     if (
       this.connectedState === ConnectedState.CONNECTED ||
       this.connectedState === ConnectedState.JOINED
     ) {
       this.send(ServiceCommand.PING, '\x0c');
-      this.log.verbose(`PING: ${this.connectInfo!.channelId}`);
+      this.log.verbose(`PING: ${this.connection!.channelId}`);
     }
   };
 
-  setConnectedState = (state: ConnectedState): void => {
-    this.connectedState = state;
-  };
-
   connect = async (userId: string, password = '') => {
-    this.setConnectedState(ConnectedState.STANDBY);
+    this.connectedState = ConnectedState.STANDBY;
     try {
       const liveInfo = await getPlayerLiveInfo(userId);
       if (liveInfo.CHANNEL?.RESULT !== 1) {
         throw new Error(`방송 중이 아닙니다. (${userId})`);
       }
-      this.streamInfo = liveInfo as StreamInfoOnline;
-      this.connectInfo = {
-        channelId: this.streamInfo.CHANNEL.BJID,
-        host: this.streamInfo.CHANNEL.CHDOMAIN,
-        port: parseInt(this.streamInfo.CHANNEL.CHPT) + 1,
+      this.stream = liveInfo as StreamInfoOnline;
+      this.connection = {
+        channelId: this.stream.CHANNEL.BJID,
+        host: this.stream.CHANNEL.CHDOMAIN,
+        port: parseInt(this.stream.CHANNEL.CHPT) + 1,
         password,
       };
-      this.log.name = `soop-chat:${this.connectInfo.channelId}`.padEnd(23);
+      this.log.name = `soop-chat:${this.connection.channelId}`.padEnd(23);
 
-      const wsHost = `wss://${this.connectInfo.host.toLowerCase()}:${
-        this.connectInfo.port
-      }/Websocket/${this.connectInfo.channelId}`;
+      const wsHost = `wss://${this.connection.host.toLowerCase()}:${
+        this.connection.port
+      }/Websocket/${this.connection.channelId}`;
 
       this.log.info(`연결시도: ${wsHost}`);
       const ws = new WebSocket(wsHost, 'chat');
       ws.binaryType = 'arraybuffer';
       ws.onopen = () => {
-        this.setConnectedState(ConnectedState.CONNECTED);
+        this.connectedState = ConnectedState.CONNECTED;
         this.log.info(`연결됨: ${ws.url}`);
-        clearInterval(this.loopPingPong);
-        this.loopPingPong = setInterval(this.sendPing, 60000);
         ws.send(CMD_CONNECT);
       };
       ws.onclose = () => {
-        this.setConnectedState(ConnectedState.STANDBY);
+        this.connectedState = ConnectedState.STANDBY;
         clearInterval(this.loopPingPong);
         this.log.warn('채팅 서버와 연결이 끊어졌습니다.');
       };
       ws.onerror = (e) => {
-        this.setConnectedState(ConnectedState.STANDBY);
+        this.connectedState = ConnectedState.STANDBY;
         if (e.message == 'unable to verify the first certificate') {
           this.log.warn('채팅 서버 인증서 오류로 인해 연결이 실패했습니다.');
         } else {
@@ -124,6 +137,21 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     }
   };
 
+  disconnect = () => {
+    if (this.socket) {
+      this.log.warn('채팅 서버와 연결을 종료합니다.');
+      this.emit('part', this.connection?.channelId ?? '');
+      this.connectedState = ConnectedState.STANDBY;
+      this.socket.close();
+      this.connection = null;
+    }
+  };
+
+  /**
+   * @deprecated
+   */
+  close = this.disconnect;
+
   send = (serviceCommand: ServiceCommand, body: string) => {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return false;
@@ -137,11 +165,11 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     return true;
   };
 
-  joinChannel = () => {
-    if (!this.streamInfo) {
+  protected joinChannel = () => {
+    if (!this.stream) {
       return;
     }
-    const stream = this.streamInfo.CHANNEL;
+    const stream = this.stream.CHANNEL;
     const body = [
       `\x0c${stream.CHATNO}`,
       `\x0c${stream.FTK}`,
@@ -163,19 +191,19 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       '\x06&\x06subscribe\x06=\x060',
       '\x06&\x06lowlatency\x06=\x061',
       '\x12',
-      `pwd\x11${this.connectInfo?.password ?? ''}\x12`,
+      `pwd\x11${this.connection?.password ?? ''}\x12`,
       'auth_info\x11NULL\x12',
       'pver\x112\x12',
       'access_system\x11html5\x12',
       '\x0c',
     ];
-    if (this.streamInfo.CHANNEL.BPWD === 'Y') {
+    if (this.stream.CHANNEL.BPWD === 'Y') {
       this.log.info(`비번방에 접속합니다.`);
     }
     this.send(ServiceCommand.JOIN, body.join(''));
   };
 
-  processMessage = (msg: ArrayBuffer): void => {
+  protected processMessage = (msg: ArrayBuffer): void => {
     const header = msg.slice(0, 14);
 
     // const magicNumber = header.slice(0, 2); // 1b 09
@@ -187,7 +215,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
 
     switch (serviceCommand) {
       case ServiceCommand.LOGIN:
-        this.log.info(`로그인: ${this.connectInfo!.channelId}`);
+        this.log.info(`로그인: ${this.connection!.channelId}`);
         this.joinChannel();
         break;
       case ServiceCommand.JOIN:
@@ -265,10 +293,10 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     }
   };
 
-  onMsgJoin = (bodyParted: string[]) => {
+  protected onMsgJoin = (bodyParted: string[]) => {
     if (bodyParted[0] === '비밀번호가 틀렸습니다.') {
       this.log.warn(`채널 입장 실패: 비밀번호가 틀렸습니다.`);
-      this.close();
+      this.disconnect();
       return;
     }
     const [
@@ -281,12 +309,12 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       unknown5,
       unknown6,
     ] = bodyParted;
-    this.setConnectedState(ConnectedState.JOINED);
+    this.connectedState = ConnectedState.JOINED;
     this.log.info(`채널 입장: ${channelId}`);
     this.emit('join', channelId);
   };
 
-  onMsgJoinPartUser = (bodyParted: string[]) => {
+  protected onMsgJoinPartUser = (bodyParted: string[]) => {
     const [
       joinType, // '1': join, other: part
       userId,
@@ -320,7 +348,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     }
   };
 
-  onMsgSetUserTimeout = (bodyParted: string[]) => {
+  protected onMsgSetUserTimeout = (bodyParted: string[]) => {
     const [
       userId,
       userflag,
@@ -344,7 +372,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     });
   };
 
-  onMsgChatMsg = (bodyParted: string[]) => {
+  protected onMsgChatMsg = (bodyParted: string[]) => {
     const [
       content,
       userId,
@@ -440,7 +468,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
 
     this.emit('chat', {
       content,
-      channelId: this.connectInfo!.channelId,
+      channelId: this.connection!.channelId,
       userId,
       normalColor,
       language,
@@ -460,7 +488,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     });
   };
 
-  onMsgChatOgq = (bodyParted: string[]) => {
+  protected onMsgChatOgq = (bodyParted: string[]) => {
     const [
       unknown1,
       content,
@@ -513,7 +541,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     );
     this.emit('chat', {
       content,
-      channelId: this.connectInfo!.channelId,
+      channelId: this.connection!.channelId,
       userId,
       normalColor: '',
       language,
@@ -533,7 +561,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     });
   };
 
-  onMsgOgqGift = (bodyParted: string[]) => {
+  protected onMsgOgqGift = (bodyParted: string[]) => {
     const [
       unknown1,
       senderUserId,
@@ -548,7 +576,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     );
   };
 
-  onMsgSetUserflag = (bodyParted: string[]) => {
+  protected onMsgSetUserflag = (bodyParted: string[]) => {
     const [before, userId, nickname, unknown1, unknown2, after, unknown3] =
       bodyParted;
 
@@ -584,7 +612,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     );
   };
 
-  onMsgInoutManager = (bodyParted: string[]) => {
+  protected onMsgInoutManager = (bodyParted: string[]) => {
     const [userId, userflag, unknown, nickname] = bodyParted;
     const userflag1 = parseInt(userflag.split('|')[0]);
     const isManager = this.isUserflag(Userflag1.MANAGER2, userflag1);
@@ -593,7 +621,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     );
   };
 
-  onMsgIce = (bodyParted: string[]) => {
+  protected onMsgIce = (bodyParted: string[]) => {
     const [
       isEnabled, // '1': enable, '0': disable
       isEnabled2, // '1': enable, '0': disable
@@ -624,12 +652,12 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     }
   };
 
-  onMsgSlowMode = (bodyParted: string[]) => {
+  protected onMsgSlowMode = (bodyParted: string[]) => {
     const [unknown1, duration] = bodyParted;
     this.log.info(`저속모드: ${duration === '0' ? '해제' : duration + '초'}`);
   };
 
-  onMsgBalloon = (bodyParted: string[]) => {
+  protected onMsgBalloon = (bodyParted: string[]) => {
     const [
       channelId,
       userId,
@@ -666,7 +694,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     });
   };
 
-  onMsgBalloonAd = (bodyParted: string[]) => {
+  protected onMsgBalloonAd = (bodyParted: string[]) => {
     const [
       unknown1,
       channelId,
@@ -705,7 +733,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     });
   };
 
-  onMsgBalloonAdStation = (bodyParted: string[]) => {
+  protected onMsgBalloonAdStation = (bodyParted: string[]) => {
     const [channelId, userId, nickname, count, image, message, unknown1] =
       bodyParted;
     this.log.verbose(`방송국 애드벌룬: ${nickname}(${userId}) ${count}개`);
@@ -721,7 +749,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     });
   };
 
-  onMsgPoll = (bodyParted: string[]) => {
+  protected onMsgPoll = (bodyParted: string[]) => {
     const [status, channelId, pollId, unknown1] = bodyParted;
     if (status === '1') {
       this.log.info(`투표 시작: ${pollId}`);
@@ -730,7 +758,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     }
   };
 
-  onMsgBlockWordsList = (bodyParted: string[]) => {
+  protected onMsgBlockWordsList = (bodyParted: string[]) => {
     const [filterded, _targets] = bodyParted;
     if (_targets === '') {
       return;
@@ -741,22 +769,22 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     }
   };
 
-  onMsgStreamClosed = (_: string[]) => {
-    this.log.warn(`방송 종료됨: ${this.connectInfo!.channelId}`);
-    this.close();
+  protected onMsgStreamClosed = (_: string[]) => {
+    this.log.warn(`방송 종료됨: ${this.connection!.channelId}`);
+    this.disconnect();
   };
 
-  onMsgNoticeSystem = (bodyParted: string[]) => {
+  protected onMsgNoticeSystem = (bodyParted: string[]) => {
     const [notice, unknown1] = bodyParted;
     this.log.info(`시스템 공지: ${notice}`);
   };
 
-  onMsgNotice = (bodyParted: string[]) => {
+  protected onMsgNotice = (bodyParted: string[]) => {
     const [unknown1, unknown2, unknown3, notice] = bodyParted;
     this.log.info(`공지: ${notice}`);
   };
 
-  onMsgSubscriptionGift = (bodyParted: string[]) => {
+  protected onMsgSubscriptionGift = (bodyParted: string[]) => {
     const [
       subGiftChatNo,
       subGiftChannelId,
@@ -780,7 +808,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     );
   };
 
-  onMsgSubscriptionNew = (bodyParted: string[]) => {
+  protected onMsgSubscriptionNew = (bodyParted: string[]) => {
     const [
       unknown1,
       channelId,
@@ -794,7 +822,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     );
   };
 
-  onMsgSubscription = (bodyParted: string[]) => {
+  protected onMsgSubscription = (bodyParted: string[]) => {
     const [
       channelId,
       userId,
@@ -808,20 +836,14 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     );
   };
 
-  isUserflag = (flagName: Userflag1 | Userflag2, userflag: number) => {
+  protected isUserflag = (
+    flagName: Userflag1 | Userflag2,
+    userflag: number,
+  ) => {
     return !!((userflag >>> flagName) & 1);
   };
 
-  isIceflag = (flagName: IceFlag, iceflag: number) => {
+  protected isIceflag = (flagName: IceFlag, iceflag: number) => {
     return !!((iceflag >>> flagName) & 1);
-  };
-
-  close = () => {
-    if (this.socket) {
-      this.socket.close();
-      this.setConnectedState(ConnectedState.STANDBY);
-      this.log.warn('채팅 서버와 연결을 종료합니다.');
-      this.emit('part', this.connectInfo?.channelId ?? '');
-    }
   };
 }

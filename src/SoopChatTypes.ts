@@ -4,6 +4,13 @@ export enum ConnectedState {
   JOINED,
 }
 
+export type ConnectionInfo = {
+  channelId: string;
+  host: string;
+  port: number;
+  password: string;
+};
+
 export type SoopChatMessage = {
   content: string;
   channelId: string;

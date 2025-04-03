@@ -9,6 +9,10 @@ import {
   SoopBalloonType,
   SoopBlock,
   SoopBlockType,
+  SoopChatMessageContent,
+  SoopChatMessageContentText,
+  SoopChatMessageContentEmote,
+  SoopChatMessageContentType,
 } from 'SoopChatTypes';
 
 export {
@@ -22,4 +26,8 @@ export {
   SoopBalloonType,
   SoopBlock,
   SoopBlockType,
+  SoopChatMessageContent,
+  SoopChatMessageContentText,
+  SoopChatMessageContentEmote,
+  SoopChatMessageContentType,
 };

@@ -1,4 +1,9 @@
-import { StreamInfo } from "SoopApiTypes";
+import { StreamInfo } from 'SoopApiTypes';
+
+const headers = {
+  'User-Agent': 'Mozilla/5.0',
+  'Content-Type': 'application/x-www-form-urlencoded',
+};
 
 export const getPlayerLiveInfo = async (
   userId: string,
@@ -7,9 +12,7 @@ export const getPlayerLiveInfo = async (
     `https://live.sooplive.co.kr/afreeca/player_live_api.php?bjid=${userId}`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers,
       body: new URLSearchParams({
         bid: userId,
         type: 'live',

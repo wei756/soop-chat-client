@@ -1,4 +1,4 @@
-import { StreamInfo } from 'SoopApiTypes';
+import { SignatureEmoteResponse, StreamInfo } from 'SoopApiTypes';
 
 const headers = {
   'User-Agent': 'Mozilla/5.0',
@@ -26,6 +26,22 @@ export const getPlayerLiveInfo = async (
   );
 
   const data: StreamInfo = await res.json();
+
+  return data;
+};
+
+export const getChannelEmotes = async (
+  userId: string,
+): Promise<SignatureEmoteResponse> => {
+  const res = await fetch(
+    `https://live.sooplive.co.kr/api/signature_emoticon_api.php?work=list&szBjId=${userId}`,
+    {
+      method: 'GET',
+      headers,
+    },
+  );
+
+  const data: SignatureEmoteResponse = await res.json();
 
   return data;
 };

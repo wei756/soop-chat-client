@@ -95,3 +95,33 @@ export type SubscriptionBadge = {
   MONTH: number;
   FILENAME: string;
 };
+
+export type SignatureEmoteResponse =
+  | SignatureEmoteEmptyResponse
+  | SignatureEmoteExistResponse;
+
+export type SignatureEmoteEmptyResponse = {
+  result: 1;
+  data: [];
+  version: 0;
+};
+
+export type SignatureEmoteExistResponse = {
+  result: 1;
+  data: SignatureEmote[];
+  img_path: string;
+  tier_type: number;
+  version: number;
+};
+
+export type SignatureEmote = {
+  title: string;
+  tier_type: 1 | 2 | 3;
+  pc_img: string;
+  mobile_img: string;
+  pc_alternate_img: string;
+  mob_alternate_img: string;
+  move_img: 'Y' | 'N';
+  order_no: string;
+  black_keyword: 'Y' | 'N';
+};

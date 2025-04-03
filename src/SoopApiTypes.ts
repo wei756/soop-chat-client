@@ -111,7 +111,7 @@ export type SignatureEmoteExistResponse = {
   data: SignatureEmote[];
   img_path: string;
   tier_type: number;
-  version: number;
+  version: 1;
 };
 
 export type SignatureEmote = {

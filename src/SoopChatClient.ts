@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import { TypedEmitter } from 'tiny-typed-emitter';
 import chalk from 'chalk';
 import { Logger } from 'Logger';
-import { getPlayerLiveInfo } from 'SoopApi';
+import { getChannelEmotes, getPlayerLiveInfo } from 'SoopApi';
 import { StreamInfoOnline } from 'SoopApiTypes';
 import {
   CMD_CONNECT,
@@ -13,6 +13,7 @@ import {
   Userflag2,
 } from 'SoopChatConstants';
 import {
+  ChannelEmoteInfo,
   ConnectedState,
   ConnectionInfo,
   SoopBalloon,
@@ -20,6 +21,8 @@ import {
   SoopBlock,
   SoopBlockType,
   SoopChatMessage,
+  SoopChatMessageContent,
+  SoopChatMessageContentType,
 } from 'SoopChatTypes';
 
 interface SoopChatClientEvents {
@@ -47,6 +50,13 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
   }
   public get stream() {
     return this._stream;
+  }
+  protected _emotes: Record<string, ChannelEmoteInfo> = {};
+  protected set emotes(emotes: Record<string, ChannelEmoteInfo>) {
+    this._emotes = emotes;
+  }
+  public get emotes() {
+    return this._emotes;
   }
 
   private _connectedState: ConnectedState = ConnectedState.STANDBY;
@@ -130,6 +140,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
         }
       };
       this.socket = ws;
+      this.loadEmotes(userId);
     } catch (e) {
       if (e instanceof Error) {
         this.log.warn(e.message);
@@ -144,6 +155,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       this.connectedState = ConnectedState.STANDBY;
       this.socket.close();
       this.connection = null;
+      this.emotes = {};
     }
   };
 
@@ -163,6 +175,39 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     const sendData = `${header}${body}`;
     this.socket?.send(sendData);
     return true;
+  };
+
+  protected loadEmotes = async (userId: string) => {
+    try {
+      const emotes = await getChannelEmotes(userId);
+      this.emotes = {};
+      if (emotes.version === 0) {
+        this.log.info('채널 이모티콘이 없습니다.');
+        return;
+      }
+      emotes.data.forEach((emote) => {
+        this.emotes[emote.title] = {
+          title: emote.title,
+          tier: emote.tier_type ?? 1,
+          pcImg: emotes.img_path + emote.pc_img,
+          pcAltImg: emote.pc_alternate_img
+            ? emotes.img_path + emote.pc_alternate_img
+            : '',
+          mobileImg: emotes.img_path + emote.mobile_img,
+          mobileAltImg: emote.mob_alternate_img
+            ? emotes.img_path + emote.mob_alternate_img
+            : '',
+          isAnimated: emote.move_img === 'Y' ? true : false,
+          orderNo: emote.order_no,
+          blackKeyword: emote.black_keyword === 'Y' ? true : false,
+        };
+      });
+    } catch (e) {
+      if (e instanceof Error) {
+        this.log.warn(e.message);
+      }
+      return;
+    }
   };
 
   protected joinChannel = () => {
@@ -406,7 +451,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     const userflag2 = parseInt(userflag.split('|')[1]);
     const isStreamer = this.isUserflag(Userflag1.HOST, userflag1);
     const isFan = this.isUserflag(Userflag1.FANCLUB, userflag1);
-    const sub = this.isUserflag(Userflag1.FOLLOWER, userflag1);
+    const isSubscriber = this.isUserflag(Userflag1.FOLLOWER, userflag1);
     const isTopfan = this.isUserflag(Userflag1.TOPFAN, userflag1);
     const isManager = this.isUserflag(Userflag1.MANAGER2, userflag1);
     const isFemale = this.isUserflag(Userflag1.FEMALE, userflag1);
@@ -465,9 +510,11 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       '|',
       userflags2.join(' '),
     );
-
+    const [contents, emotes] = this.parseContent(content, isSubscriber);
     this.emit('chat', {
       content,
+      emotes,
+      parsedContent: contents,
       channelId: this.connection!.channelId,
       userId,
       normalColor,
@@ -486,6 +533,55 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       userflag2,
       stickerUrl: '',
     });
+  };
+
+  protected parseContent = (
+    content: string,
+    isSubscriber: boolean,
+  ): [SoopChatMessageContent[], Record<string, ChannelEmoteInfo>] => {
+    const emotes: Record<string, ChannelEmoteInfo> = {};
+    if (!isSubscriber) {
+      return [
+        [
+          {
+            type: SoopChatMessageContentType.TEXT,
+            body: content,
+          } as SoopChatMessageContent,
+        ],
+        emotes,
+      ];
+    }
+    const contentList: SoopChatMessageContent[] = [];
+    const emoteRegex = /\/([^\/]+)\//g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = emoteRegex.exec(content)) !== null) {
+      const emoteName = match[1];
+      const emoteInfo = this.emotes[emoteName];
+      if (emoteInfo) {
+        if (lastIndex < match.index) {
+          contentList.push({
+            type: SoopChatMessageContentType.TEXT,
+            body: content.slice(lastIndex, match.index),
+          });
+        }
+        if (!emotes[emoteName]) {
+          emotes[emoteName] = emoteInfo;
+        }
+        contentList.push({
+          type: SoopChatMessageContentType.EMOTE,
+          body: emoteName,
+        });
+        lastIndex = match.index + match[0].length;
+      }
+    }
+    if (lastIndex < content.length) {
+      contentList.push({
+        type: SoopChatMessageContentType.TEXT,
+        body: content.slice(lastIndex),
+      });
+    }
+    return [contentList, emotes];
   };
 
   protected onMsgChatOgq = (bodyParted: string[]) => {
@@ -528,11 +624,14 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     const userflag2 = parseInt(userflag.split('|')[1]);
     const isStreamer = this.isUserflag(Userflag1.HOST, userflag1);
     const isFan = this.isUserflag(Userflag1.FANCLUB, userflag1);
+    const isSubscriber = this.isUserflag(Userflag1.FOLLOWER, userflag1);
     const isTopfan = this.isUserflag(Userflag1.TOPFAN, userflag1);
     const isManager = this.isUserflag(Userflag1.MANAGER2, userflag1);
     const isFemale = this.isUserflag(Userflag1.FEMALE, userflag1);
 
     const stickerUrl = `${stickerSetId}/${stickerId}_40.${stickerFiletype}?ver=${stickerVer}`;
+
+    const [contents, emotes] = this.parseContent(content, isSubscriber);
 
     this.log.verbose(
       `OGQ: ${chalk.hex('#' + colorDarkmode)(
@@ -541,6 +640,8 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
     );
     this.emit('chat', {
       content,
+      emotes,
+      parsedContent: contents,
       channelId: this.connection!.channelId,
       userId,
       normalColor: '',

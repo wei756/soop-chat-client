@@ -1,6 +1,9 @@
+import { StreamInfoOnline } from 'SoopApiTypes';
 import { SoopChatClient } from 'SoopChatClient';
 import {
   ConnectedState,
+  ConnectionInfo,
+  ChannelEmoteInfo,
   SoopChatMessage,
   SoopBalloon,
   SoopBalloonType,
@@ -11,6 +14,9 @@ import {
 export {
   SoopChatClient,
   ConnectedState,
+  ConnectionInfo,
+  StreamInfoOnline,
+  ChannelEmoteInfo,
   SoopChatMessage,
   SoopBalloon,
   SoopBalloonType,

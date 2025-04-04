@@ -426,9 +426,10 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       language, // '3'
       nickname,
       userflag,
-      subscription,
+      subscriptionSeq, // 연속 구독
       color,
       colorDarkmode,
+      subscriptionSum, // 누적 구독
     ] = bodyParted;
 
     let userTypeName: string;
@@ -445,7 +446,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
         userTypeName = 'normal';
     }
 
-    const subscriptionNum = parseInt(subscription);
+    const subscriptionNum = parseInt(subscriptionSum);
 
     const userflag1 = parseInt(userflag.split('|')[0]);
     const userflag2 = parseInt(userflag.split('|')[1]);
@@ -458,7 +459,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
 
     const badge = isFemale ? '[여]' : '[남]';
     const badge1 =
-      subscriptionNum > 0 ? `[${subscription.padStart(2, '0')}]` : '    ';
+      subscriptionNum > 0 ? `[${subscriptionSum.padStart(2, '0')}]` : '    ';
     const badge2 = isStreamer
       ? '[스]'
       : isManager
@@ -598,10 +599,10 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       language,
       userType,
       stickerFiletype,
-      subscription,
+      subscriptionSeq, // 연속 구독
       color,
       colorDarkmode,
-      unknown6,
+      subscriptionSum, // 누적 구독
     ] = bodyParted;
 
     let userTypeName: string;
@@ -618,7 +619,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
         userTypeName = 'normal';
     }
 
-    const subscriptionNum = parseInt(subscription);
+    const subscriptionNum = parseInt(subscriptionSum);
 
     const userflag1 = parseInt(userflag.split('|')[0]);
     const userflag2 = parseInt(userflag.split('|')[1]);

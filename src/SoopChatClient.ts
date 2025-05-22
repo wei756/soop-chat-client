@@ -89,7 +89,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       this.connectedState === ConnectedState.JOINED
     ) {
       this.send(ServiceCommand.PING, '\x0c');
-      this.log.verbose(`PING: ${this.connection!.channelId}`);
+      this.log.verbose(`PING: ${this.connection?.channelId}`);
     }
   };
 
@@ -260,7 +260,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
 
     switch (serviceCommand) {
       case ServiceCommand.LOGIN:
-        this.log.info(`로그인: ${this.connection!.channelId}`);
+        this.log.info(`로그인: ${this.connection?.channelId}`);
         this.joinChannel();
         break;
       case ServiceCommand.JOIN:
@@ -516,7 +516,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       content,
       emotes,
       parsedContent: contents,
-      channelId: this.connection!.channelId,
+      channelId: this.connection?.channelId ?? '',
       userId,
       normalColor,
       language,
@@ -643,7 +643,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
       content,
       emotes,
       parsedContent: contents,
-      channelId: this.connection!.channelId,
+      channelId: this.connection?.channelId ?? '',
       userId,
       normalColor: '',
       language,
@@ -872,7 +872,7 @@ export class SoopChatClient extends TypedEmitter<SoopChatClientEvents> {
   };
 
   protected onMsgStreamClosed = (_: string[]) => {
-    this.log.warn(`방송 종료됨: ${this.connection!.channelId}`);
+    this.log.warn(`방송 종료됨: ${this.connection?.channelId}`);
     this.disconnect();
   };
 
